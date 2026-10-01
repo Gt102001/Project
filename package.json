@@ -1,0 +1,9 @@
+{
+  "name": "aegisedu-student-portal",
+  "version": "1.0.0",
+  "description": "AegisEdu Institutional Student Intelligence & Academic Data Management Portal",
+  "scripts": {
+    "server": "node server/server.js",
+    "client": "npm --prefix react run dev"
+  }
+}
