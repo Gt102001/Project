@@ -6,7 +6,8 @@ import {
   Info, 
   UserCheck, 
   Lock, 
-  GraduationCap
+  GraduationCap,
+  Database
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -118,6 +119,21 @@ export default function Navbar({
           >
             <Info size={16} />
             <span>About Us</span>
+          </button>
+
+          <button
+            onClick={() => setCurrentTab('database')}
+            className={`btn-ghost ${currentTab === 'database' ? 'active-tab' : ''}`}
+            style={{
+              padding: '0.5rem 0.9rem',
+              fontSize: '0.85rem',
+              background: currentTab === 'database' ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
+              borderColor: currentTab === 'database' ? 'var(--accent-indigo)' : 'transparent',
+              color: currentTab === 'database' ? '#fff' : 'var(--text-secondary)',
+            }}
+          >
+            <Database size={16} />
+            <span>Database</span>
           </button>
         </nav>
 

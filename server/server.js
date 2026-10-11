@@ -1,6 +1,7 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import mysql from 'mysql2/promise';
+import { db, setupDatabase } from './db.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -24,16 +25,90 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static uploads
 app.use('/uploads', express.static(uploadDir));
 
-// Database connection pool
-const db = mysql.createPool({
-  host: process.env.DB_HOST || '127.0.0.1',
-  port: parseInt(process.env.DB_PORT || '3306', 10),
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'Pass@123',
-  database: process.env.DB_NAME || 'student',
-  waitForConnections: true,
-  connectionLimit: 15,
-  queueLimit: 0,
+// HTTP Request Logger Middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    if (!req.originalUrl.startsWith('/assets/')) {
+      const time = new Date().toLocaleTimeString();
+      const statusIcon = res.statusCode >= 500 ? '❌' : res.statusCode >= 400 ? '⚠️' : '⚡';
+      console.log(`${statusIcon} [${time}] ${req.method} ${req.originalUrl} -> HTTP ${res.statusCode} (${Date.now() - start}ms)`);
+    }
+  });
+  next();
+});
+
+// ==========================================
+// 0. DATABASE STATUS & WEB MANAGEMENT APIS
+// ==========================================
+app.get('/api/db-status', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT 1 as connected');
+    const tables = db.getTables ? db.getTables() : [];
+    res.json({
+      status: 'connected',
+      engine: db.getEngine ? db.getEngine() : 'mysql',
+      dbFile: db.getDbFilePath ? db.getDbFilePath() : 'MySQL Server',
+      tablesCount: tables.length,
+      message: 'Database operational and connected',
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'disconnected',
+      error: err.message,
+    });
+  }
+});
+
+// Get all tables and schema info for Web Database Manager
+app.get('/api/db/tables', (req, res) => {
+  try {
+    if (!db.getTables) return res.status(501).json({ error: 'Not supported on current engine' });
+    const tables = db.getTables();
+    res.json({
+      engine: db.getEngine(),
+      dbPath: db.getDbFilePath(),
+      tables,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get table data
+app.get('/api/db/tables/:name', (req, res) => {
+  const { name } = req.params;
+  const { limit = 50, offset = 0, sortBy, order = 'ASC' } = req.query;
+  try {
+    if (!db.getTableData) return res.status(501).json({ error: 'Not supported on current engine' });
+    const data = db.getTableData(name, parseInt(limit, 10), parseInt(offset, 10), sortBy, order);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Execute custom SQL query from the UI console
+app.post('/api/db/query', (req, res) => {
+  const { sql } = req.body;
+  try {
+    if (!db.executeCustomSql) return res.status(501).json({ error: 'Not supported on current engine' });
+    const result = db.executeCustomSql(sql);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Reset database to initial sample data
+app.post('/api/db/reset', (req, res) => {
+  try {
+    if (!db.resetDatabase) return res.status(501).json({ error: 'Not supported on current engine' });
+    const result = db.resetDatabase();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Configure Multer for document and image uploads
@@ -472,7 +547,20 @@ app.get('/api/admin/system-logs', async (req, res) => {
   }
 });
 
+// Serve React production build
+const clientDist = path.join(__dirname, '..', 'react', 'dist');
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+      return next();
+    }
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
+
 // Start Server
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`AegisEdu Student Portal API running on http://localhost:${PORT}`);
+  await setupDatabase();
 });

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Full-Stack Architecture, Deployment, Logging & CI/CD Guide</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      color: #1e293b;
+      line-height: 1.55;
+      font-size: 10pt;
+      background: #fff;
+    }
+    h1 {
+      color: #1e1b4b;
+      font-size: 20pt;
+      border-bottom: 3px solid #6366f1;
+      padding-bottom: 6px;
+      margin-top: 0;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      color: #64748b;
+      font-size: 9.5pt;
+      margin-bottom: 14px;
+    }
+    h2 {
+      color: #312e81;
+      font-size: 14pt;
+      border-bottom: 1.5px solid #e2e8f0;
+      padding-bottom: 4px;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+    h3 {
+      color: #4338ca;
+      font-size: 11.5pt;
+      margin-top: 14px;
+      margin-bottom: 6px;
+      page-break-after: avoid;
+    }
+    p, li {
+      font-size: 9.5pt;
+      color: #334155;
+    }
+    .card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #6366f1;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin: 10px 0;
+      page-break-inside: avoid;
+    }
+    .diagram-box {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: 'Consolas', 'Courier New', monospace;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 8.5pt;
+      line-height: 1.35;
+      overflow-x: auto;
+      margin: 10px 0;
+      page-break-inside: avoid;
+    }
+    code {
+      font-family: 'Consolas', 'Courier New', monospace;
+      background: #f1f5f9;
+      color: #4f46e5;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-size: 8.5pt;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 9pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 6px 9px;
+      text-align: left;
+    }
+    th {
+      background: #f1f5f9;
+      color: #1e293b;
+      font-weight: 700;
+    }
+    tr:nth-child(even) {
+      background: #f8fafc;
+    }
+    .page-break {
+      page-break-before: always;
+    }
+    .footer {
+      margin-top: 20px;
+      padding-top: 8px;
+      border-top: 1px solid #cbd5e1;
+      font-size: 8pt;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Comprehensive Full-Stack Guide: Architecture, Logging, CI/CD & Java Roadmap</h1>
+  <div class="subtitle">Prepared for: Pravin Tambe &bull; Project: AegisEdu &bull; Generated: October 2026</div>
+
+  <div class="card">
+    <strong>Executive Overview:</strong>
+    This guide explains how client-server deployment works, how to get a permanent static URL, where to monitor API logs, how CI/CD pipelines auto-recover on failures, and provides a full roadmap for enterprise Java full-stack projects.
+  </div>
+
+  <h2>1. Root Cause: Why Did the Disconnect Happen?</h2>
+  <div class="diagram-box">
++-------------------------------------------------------------------------+
+|                           CLIENT (Frontend Browser)                     |
+|  - HTML, CSS, JavaScript (React / Vite bundle)                          |
+|  - Runs strictly inside the visitor's web browser                       |
+|  - Does NOT have direct database access or file system access           |
++-------------------------------------------------------------------------+
+                                    | HTTP / REST Requests (fetch / axios)
+                                    v
++-------------------------------------------------------------------------+
+|                           SERVER (Backend Host)                         |
+|  - Node.js (Express) or Java (Spring Boot)                              |
+|  - Manages database transactions, authentication, and business logic   |
+|  - Listens on a dedicated network port (e.g. 5000 or 8080)              |
++-------------------------------------------------------------------------+
+  </div>
+
+  <ul>
+    <li><strong>Port 3000 was static-only:</strong> <code>npx serve</code> served HTML/CSS. When React requested <code>/api/students</code>, it returned <code>index.html</code> (causing JSON syntax errors).</li>
+    <li><strong>Cloudflare pointed only to Port 3000:</strong> Port 5000 (Backend API & Database) was unreachable.</li>
+    <li><strong>Unified Port 5000 Solution:</strong> Express on Port 5000 now serves the React build from <code>/</code> AND all REST APIs from <code>/api/*</code> on the same port!</li>
+  </ul>
+
+  <h2>2. How to Get a Constant / Permanent URL (No Random URLs)</h2>
+  <p>
+    When using <code>cloudflared tunnel --url http://localhost:5000</code>, Cloudflare generates a random temporary URL (Quick Tunnel). Here is how to get a <strong>constant, unchanging URL</strong>:
+  </p>
+
+  <div class="card">
+    <strong>Method A: LocalTunnel with Fixed Subdomain (Instant & Zero Configuration)</strong>
+    <p>Run the following command in PowerShell. It gives you the exact same URL every single time:</p>
+    <code>npx localtunnel --port 5000 --subdomain aegisedu-portal</code>
+    <br><strong>Permanent URL:</strong> <code>https://aegisedu-portal.loca.lt</code>
+  </div>
+
+  <div class="card">
+    <strong>Method B: Cloudflare Named Tunnel (Official Enterprise Method)</strong>
+    <ol>
+      <li>Login: <code>cloudflared tunnel login</code></li>
+      <li>Create tunnel: <code>cloudflared tunnel create aegis-prod</code></li>
+      <li>Route to your domain or subdomain: <code>cloudflared tunnel route dns aegis-prod portal.yourdomain.com</code></li>
+      <li>Run: <code>cloudflared tunnel run aegis-prod</code></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <strong>Method C: Permanent Free Cloud Deployment (Render / Railway)</strong>
+    <p>Deploy directly to Render or Railway. You get a permanent, 24/7 online URL (e.g., <code>https://aegisedu.onrender.com</code>) that never changes and doesn't require your laptop to be awake.</p>
+  </div>
+
+  <h2>3. Where and How to View API Request Logs</h2>
+  <p>You can monitor API activity in three different places:</p>
+  <ul>
+    <li><strong>1. Live Terminal (Real-Time Console):</strong>
+      In the terminal running <code>npm start</code>, every incoming request is logged live:
+      <br><code>⚡ [18:55:12] GET /api/stats -> HTTP 200 (12ms)</code>
+      <br><code>⚡ [18:55:15] GET /api/students?page=1 -> HTTP 200 (8ms)</code>
+      <br><code>⚠️ [18:55:30] POST /api/auth/login -> HTTP 401 (4ms)</code>
+    </li>
+    <li><strong>2. In the Web Database Manager:</strong>
+      Open <code>http://localhost:5000/</code> &rarr; Click the <strong>Database</strong> tab &rarr; Open the <strong>audit_logs</strong> table to view system events and diagnostic records.
+    </li>
+    <li><strong>3. Browser Developer Tools:</strong>
+      Press <code>F12</code> &rarr; Click the <strong>Network</strong> tab &rarr; Filter by <code>Fetch/XHR</code> to see live requests, response times, headers, and JSON payloads.
+    </li>
+  </ul>
+
+  <div class="page-break"></div>
+
+  <h2>4. CI/CD Pipeline & Automated Recovery</h2>
+  <p>
+    A Continuous Integration & Continuous Deployment (CI/CD) pipeline ensures your app automatically tests, builds, and redeploys without breaking the live URL:
+  </p>
+
+  <div class="diagram-box">
+Developer Pushes Code to GitHub ('main' branch)
+                 |
+                 v
++-------------------------------------------------------------------------+
+|                  GITHUB ACTIONS CI/CD PIPELINE                          |
+|  1. Checks out repository                                               |
+|  2. Installs dependencies (npm install)                                 |
+|  3. Runs Frontend Build (npm run build)                                 |
+|  4. Runs Automated Tests & Code Integrity Checks                       |
++-------------------------------------------------------------------------+
+       |                                              |
+       | IF BUILD FAILS                               | IF BUILD PASSES
+       v                                              v
++---------------------------------------+    +----------------------------+
+| Pipeline Halts & Alerts Developer     |    | Automatically Redeploys to |
+| Live URL Stays on Last Working Version|    | the SAME Constant URL      |
+| ZERO DOWNTIME FOR USERS               |    | (Render / Railway / Server)|
++---------------------------------------+    +----------------------------+
+  </div>
+
+  <h3>Auto-Recovery with Process Supervisors (PM2)</h3>
+  <p>
+    If your server crashes due to an unhandled exception or memory issue, a process supervisor restarts it in milliseconds so your tunnel stays alive:
+  </p>
+  <code>npm install -g pm2</code><br>
+  <code>pm2 start server/server.js --name "aegisedu" --watch</code><br>
+  <code>pm2 logs aegisedu</code> (View live logs)
+
+  <h2>5. Enterprise Java Full-Stack Project Roadmap</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Phase</th>
+        <th>Topics & Deliverables</th>
+        <th>Tools & Technologies</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Core Backend</strong></td>
+        <td>REST API, 3-tier architecture (Controller, Service, Repository), DTOs</td>
+        <td>Java 21, Spring Boot 3, Spring Web</td>
+      </tr>
+      <tr>
+        <td><strong>2. Database Layer</strong></td>
+        <td>JPA Entities, Hibernate ORM, Automated CRUD, Zero-Admin H2 Database</td>
+        <td>Spring Data JPA, H2 / MySQL</td>
+      </tr>
+      <tr>
+        <td><strong>3. Security</strong></td>
+        <td>Stateless authentication, JWT tokens, Role-based permissions, CORS</td>
+        <td>Spring Security 6, jjwt</td>
+      </tr>
+      <tr>
+        <td><strong>4. Unified Packaging</strong></td>
+        <td>Build React (<code>npm run build</code>) &rarr; Copy to <code>src/main/resources/static/</code> &rarr; Package into single JAR</td>
+        <td>Maven, frontend-maven-plugin</td>
+      </tr>
+      <tr>
+        <td><strong>5. Deployment</strong></td>
+        <td>Run <code>java -jar app.jar</code> on port 8080 &rarr; Expose with Cloudflare Tunnel or Docker</td>
+        <td>Cloudflare Tunnel, Docker</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>6. Node.js vs. Java Full-Stack Cheat Sheet</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>Node.js (Your Current Project)</th>
+        <th>Java Full-Stack (Spring Boot)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Backend Engine</strong></td>
+        <td>Express.js (Port 5000)</td>
+        <td>Spring Boot 3 (Port 8080)</td>
+      </tr>
+      <tr>
+        <td><strong>Zero-Install DB</strong></td>
+        <td>Native SQLite (<code>server/student.db</code>)</td>
+        <td>Embedded H2 (<code>./data/studentdb.mv.db</code>)</td>
+      </tr>
+      <tr>
+        <td><strong>Unified Static Path</strong></td>
+        <td><code>app.use(express.static('../react/dist'))</code></td>
+        <td><code>src/main/resources/static/</code></td>
+      </tr>
+      <tr>
+        <td><strong>Packaging</strong></td>
+        <td><code>npm start</code></td>
+        <td><code>mvn package</code> &rarr; <code>java -jar app.jar</code></td>
+      </tr>
+      <tr>
+        <td><strong>Tunnel Command</strong></td>
+        <td><code>cloudflared tunnel --url http://localhost:5000</code></td>
+        <td><code>cloudflared tunnel --url http://localhost:8080</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <span>&copy; 2026 AegisEdu Institutional Portal &bull; Full-Stack Study Reference</span>
+    <span>Generated automatically via Antigravity AI Engine</span>
+  </div>
+
+</body>
+</html>

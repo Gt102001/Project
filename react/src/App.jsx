@@ -7,6 +7,7 @@ import NoticeBoard from './components/NoticeBoard';
 import AboutSection from './components/AboutSection';
 import LoginModal from './components/LoginModal';
 import CreateStudentModal from './components/CreateStudentModal';
+import DatabaseManager from './components/DatabaseManager';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState('dashboard');
@@ -73,6 +74,8 @@ export default function App() {
         {currentTab === 'notices' && <NoticeBoard />}
 
         {currentTab === 'about' && <AboutSection />}
+
+        {currentTab === 'database' && <DatabaseManager />}
       </main>
 
       {/* Footer */}
